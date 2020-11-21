@@ -3,7 +3,60 @@ import logging
 import argparse
 
 #============================================
+class WbsGenerator() :
+  head='''
+@startwbs
+<style>
+wbsDiagram {
+  .group {
+      BackgroundColor grey
+      RoundCorner 40
+  }
+  .backlog {
+      BackgroundColor yellow
+  }
+  .running {
+      BackgroundColor orange
+  }
+  .done {
+      BackgroundColor green
+  }
+  .critical {
+    BackgroundColor orange
+    LineColor red
+    LineThickness 5.0
+  }
+  .neutral {
+      BackgroundColor white
+  }
+}
+</style>
+'''
+  tail="@endwbs"
+
+  #----------------------------------------------------
+  def __init__(self,args,tree) :
+    self.tree=tree
+    self.lines=[]
+    self.treeToWbs()
+
+  #----------------------------------------------------
+  def treeToWbs(self) :
+    self.lines.append(WbsGenerator.head)
+    self.nodeAsWbs(self.tree.getRoot())
+    self.lines.append(WbsGenerator.tail)
+    for l in self.lines :
+      print(l)
+
+  #----------------------------------------------------
+  def nodeAsWbs(self,node) :
+    self.lines.append(node.getRow().toWbs())
+    for c in node.getChildren() :
+      self.nodeAsWbs(c)
+
+#============================================
 class Row() :
+  #----------------------------------------------------
   def __init__(self,row) :
     logging.debug("<" + row['depth'] +">")
     self.id=row['id'].strip()
@@ -30,37 +83,53 @@ class Row() :
     logging.debug("<" + self.depth +">")
     logging.warning("<" + self.toString() +">")
    
-
+  #----------------------------------------------------
   def getDepth(self) :
     return(self.depth)
+  #----------------------------------------------------
   def getStart(self) :
     return(self.start)
+  #----------------------------------------------------
   def getEnd(self) :
     return(self.end)
+  #----------------------------------------------------
   def getDesc(self) :
     return(self.desc)
+  #----------------------------------------------------
   def getStatus(self) :
     return(self.status)
+  #----------------------------------------------------
   def getStatusNum(self) :
     return(self.statusNum)
+  #----------------------------------------------------
   def getWho(self) :
     return(self.who)
+  #----------------------------------------------------
   def getId(self) :
     return(self.id)
+  #----------------------------------------------------
   def getDirection(self) :
     return(self.direction)
 
+  #----------------------------------------------------
   def setStart(self,start) :
     self.start=start
+  #----------------------------------------------------
   def setEnd(self,end) :
     self.end=end
+  #----------------------------------------------------
+  def setDepth(self,depth) :
+    self.depth=depth
   
+  #----------------------------------------------------
   def setStatus(self,status) :
     self.status=status
     self.statusNum=self.statusValues[self.status] if self.status in self.statusValues else 0
 
+  #----------------------------------------------------
   def toString(self) :
-    return("{:50s} {:1s} {:12s} {:10s} {:10s} {:20s} {:8s} {:d} ".format(
+    return("{:s} {:20s} {:1s} {:12s} {:10s} {:10s} {:20s} {:8s} {:d} ".format(
+      self.getDepth(),
       self.getDesc(),
       self.getDirection(),
       self.getId(),
@@ -70,31 +139,51 @@ class Row() :
       self.getStatus(),
       self.getStatusNum(),
     ))
+  #----------------------------------------------------
+  def toWbs(self) :
+    level=self.getDepth() + self.getDirection()
+    return("{:s} {:s}\\n{:s}\\n{:s}\\n{:s} <<{:s}>>".format(
+      level,
+      self.getDesc(),
+      self.start,
+      self.end,
+      self.status,
+      self.status,
+      ))
 
 #============================================
 class Node() :
+  #----------------------------------------------------
   def __init__(self,parent,level,row) :
     self.parent=parent
     self.children=[]
     self.row=row
     self.level=level
-    logging.warning("New node : row={:s} level={:d}".format(self.row.toString(),self.level))
+    #logging.warning("New node : row={:s} level={:d}".format(self.row.toString(),self.level))
 
+  #----------------------------------------------------
   def getChildren(self) :
     return(self.children)
+  #----------------------------------------------------
   def addChild(self,node) :
     return(self.children.append(node))
+  #----------------------------------------------------
   def getLevel(self) :
     return(self.level)
+  #----------------------------------------------------
   def setLevel(self,level) :
     self.level=level
+  #----------------------------------------------------
   def getRow(self) :
     return(self.row)
+  #----------------------------------------------------
   def setParent(self,parent) :
     self.parent=parent
+  #----------------------------------------------------
   def getParent(self) :
     return(self.parent)
 
+  #----------------------------------------------------
   def toString(self) :
     return("{:d} {:s}".format(
       self.getLevel(),
@@ -103,26 +192,37 @@ class Node() :
 
 #============================================
 class Tree() :
+  #----------------------------------------------------
   def __init__(self,rootLevel=0) :
     self.root=None
     self.rootLevel=rootLevel
+  #----------------------------------------------------
   def setRoot(self,node) :
     self.root=node
+  #----------------------------------------------------
   def getRoot(self) :
     return(self.root)
+  #----------------------------------------------------
   def getRootLevel(self) :
     return(self.rootLevel)
+
   #----------------------------------------------------
-  def adjustLevel(self,node,level) :
-    node.setLevel(node.getLevel()+level)
+  def adjustLevel(self,node) :
+    level=node.getParent().getLevel()
+    logging.warning("adjust level  " + node.getRow().getDesc() + " " + str(node.getLevel()))
+    logging.warning("adjust level  parent " + node.getParent().getRow().getDesc())
+    logging.warning("adjust level  parent level " + str(level))
+    node.setLevel(level + 1)
+    node.getRow().setDepth("*" * (node.getLevel() +1) )
+    logging.warning("adjust level done   " + node.getRow().getDesc() + " " + str(node.getLevel()))
     for c in node.getChildren() :
-      self.adjustLevel(c,level)
-    logging.debug("after  " + node.toString())
+      self.adjustLevel(c)
 
 
 #============================================
 class TreeBuilder() :
 
+  #----------------------------------------------------
   def __init__(self,tree) :
     self.tree=tree
     self.currentNode=None
@@ -144,21 +244,23 @@ class TreeBuilder() :
 
   #----------------------------------------------------
   def addTreeToTree(self,row) :
-      fileMark=row['depth'].find("!")
-      fName=row['depth'][fileMark+1:].rstrip()
+      fName=row.getId()[1:].rstrip()
       subTree=Tree()
       build(fName,subTree)
-      upCount=fileMark - self.currentNode.getLevel()
+      upCount=len(row.getDepth()) - self.currentNode.getLevel() -1 
       for i in range(1,upCount) :
         self.currentNode=self.currentNode.getParent()
-      subTree.adjustLevel(subTree.getRoot(),self.currentNode.getLevel())
-      subTree.getRoot().setParent(self.currentNode.getParent())
+      subTree.getRoot().setParent(self.currentNode)
+      subTree.adjustLevel(subTree.getRoot())
+      #subTree.getRoot().setParent(self.currentNode.getParent())
+      #subTree.getRoot().setParent(self.currentNode)
       self.currentNode.addChild(subTree.getRoot())
-      self.currentNode=subTree.getRoot()
+      #self.currentNode=subTree.getRoot()
 
 #============================================
 class Percolator() :
 
+  #----------------------------------------------------
   def __init__(self,args,tree) :
     self.args=args
     self.tree=tree
@@ -230,10 +332,10 @@ def build(csvFile,tree) :
     treeBuilder=TreeBuilder(tree)
     for row in taskReader:
       logging.debug(row['depth'])
-      if row['depth'] :
-        if row['depth'].find("!") > 0 : 
-          treeBuilder.addTreeToTree(row)
-        elif row['depth'].startswith("*") :
+      if row['depth'] and row['depth'].startswith("*") :
+        if row['id'] and row['id'].startswith("!") : 
+          treeBuilder.addTreeToTree(Row(row))
+        else :                             
           treeBuilder.addNodeToTree(Row(row))
 
 #----------------------------------------------------
@@ -241,6 +343,7 @@ def fScan(args) :
   tree=Tree()
   build(args.file,tree)
   Percolator(args,tree)
+  WbsGenerator(args,tree)
 
 #----------------------------------------------------
 parser = argparse.ArgumentParser()
@@ -256,6 +359,7 @@ parserScan = subparsers.add_parser('scan', help='a help')
 parserScan.set_defaults(func=fScan)
 parserScan.add_argument('--file','-f',help="file",default="WBS.svt")
 parserScan.add_argument('--fix',help="Fix errors",action="store_true",default=False)
+parserScan.add_argument('--wbs',help="Generate WBS",action="store_true",default=False)
 
 args=parser.parse_args()
 loglevel=[logging.WARNING,logging.INFO,logging.DEBUG,1]
