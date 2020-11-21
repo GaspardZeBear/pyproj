@@ -7,7 +7,13 @@ class Row() :
   def __init__(self,row) :
     logging.debug("<" + row['depth'] +">")
     self.id=row['id'].strip()
-    self.depth=row['depth'].strip()
+    depth=row['depth'].strip()
+    self.direction=''
+    if depth.endswith("*") :
+      self.depth=row['depth'].strip()
+    else :
+      self.depth=depth[:-1]
+      self.direction=depth[-1:]
     self.desc=row['desc'].strip() if row['desc'] else ''
     self.start=row['start'].strip() if row['start'] else '' 
     self.end=row['end'].strip() if row['end'] else ''
@@ -41,6 +47,8 @@ class Row() :
     return(self.who)
   def getId(self) :
     return(self.id)
+  def getDirection(self) :
+    return(self.direction)
 
   def setStart(self,start) :
     self.start=start
@@ -52,8 +60,9 @@ class Row() :
     self.statusNum=self.statusValues[self.status] if self.status in self.statusValues else 0
 
   def toString(self) :
-    return("{:50s} {:12s} {:10s} {:10s} {:20s} {:8s} {:d} ".format(
+    return("{:50s} {:1s} {:12s} {:10s} {:10s} {:20s} {:8s} {:d} ".format(
       self.getDesc(),
+      self.getDirection(),
       self.getId(),
       self.getStart(),
       self.getEnd(),
@@ -69,6 +78,7 @@ class Node() :
     self.children=[]
     self.row=row
     self.level=level
+    logging.warning("New node : row={:s} level={:d}".format(self.row.toString(),self.level))
 
   def getChildren(self) :
     return(self.children)
@@ -76,8 +86,14 @@ class Node() :
     return(self.children.append(node))
   def getLevel(self) :
     return(self.level)
+  def setLevel(self,level) :
+    self.level=level
   def getRow(self) :
     return(self.row)
+  def setParent(self,parent) :
+    self.parent=parent
+  def getParent(self) :
+    return(self.parent)
 
   def toString(self) :
     return("{:d} {:s}".format(
@@ -87,12 +103,22 @@ class Node() :
 
 #============================================
 class Tree() :
-  def __init__(self) :
+  def __init__(self,rootLevel=0) :
     self.root=None
+    self.rootLevel=rootLevel
   def setRoot(self,node) :
     self.root=node
   def getRoot(self) :
     return(self.root)
+  def getRootLevel(self) :
+    return(self.rootLevel)
+  #----------------------------------------------------
+  def adjustLevel(self,node,level) :
+    node.setLevel(node.getLevel()+level)
+    for c in node.getChildren() :
+      self.adjustLevel(c,level)
+    logging.debug("after  " + node.toString())
+
 
 #============================================
 class TreeBuilder() :
@@ -101,7 +127,8 @@ class TreeBuilder() :
     self.tree=tree
     self.currentNode=None
 
-  def addToTree(self,row) :
+  #----------------------------------------------------
+  def addNodeToTree(self,row) :
     if self.currentNode :
       # Tree exists
       upCount=len(row.getDepth()) - self.currentNode.getLevel() -1 
@@ -112,8 +139,22 @@ class TreeBuilder() :
       self.currentNode=node
     else :
       # Create the root !
-      self.currentNode=Node(None,0,row)
+      self.currentNode=Node(None,self.tree.getRootLevel(),row)
       self.tree.setRoot(self.currentNode)
+
+  #----------------------------------------------------
+  def addTreeToTree(self,row) :
+      fileMark=row['depth'].find("!")
+      fName=row['depth'][fileMark+1:].rstrip()
+      subTree=Tree()
+      build(fName,subTree)
+      upCount=fileMark - self.currentNode.getLevel()
+      for i in range(1,upCount) :
+        self.currentNode=self.currentNode.getParent()
+      subTree.adjustLevel(subTree.getRoot(),self.currentNode.getLevel())
+      subTree.getRoot().setParent(self.currentNode.getParent())
+      self.currentNode.addChild(subTree.getRoot())
+      self.currentNode=subTree.getRoot()
 
 #============================================
 class Percolator() :
@@ -182,22 +223,23 @@ class Percolator() :
     logging.debug("after  " + node.toString())
 
 #----------------------------------------------------
-def build(args,tree) :
-  with open(args.file) as csvfile:
+def build(csvFile,tree) :
+  logging.warning("csvFile  " + csvFile)
+  with open(csvFile) as csvfile:
     taskReader=csv.DictReader(csvfile, fieldnames=["depth","id","desc","start","end","who","status"], delimiter=',', quotechar='"')
     treeBuilder=TreeBuilder(tree)
     for row in taskReader:
       logging.debug(row['depth'])
       if row['depth'] :
-        if row['depth'].startswith("#") :
-          next
-        else :
-          treeBuilder.addToTree(Row(row))
+        if row['depth'].find("!") > 0 : 
+          treeBuilder.addTreeToTree(row)
+        elif row['depth'].startswith("*") :
+          treeBuilder.addNodeToTree(Row(row))
 
 #----------------------------------------------------
 def fScan(args) :
   tree=Tree()
-  build(args,tree)
+  build(args.file,tree)
   Percolator(args,tree)
 
 #----------------------------------------------------
