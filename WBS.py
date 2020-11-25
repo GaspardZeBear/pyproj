@@ -425,7 +425,7 @@ class Percolator() :
     self.display(tree.getRoot())
     self.percolate(tree.getRoot())
     #print("Final")
-    #self.display(tree.getRoot())
+    self.display(tree.getRoot())
     self.displayAll(tree.getRoot())
 
   #----------------------------------------------------
@@ -471,7 +471,7 @@ class Percolator() :
 
   #----------------------------------------------------
   def parentToChild(self,parent,child) :
-    child.setUpRow()
+    #child.setUpRow()
     if child.getRow().getStart() :
       if child.getRow().getStart() < parent.getRow().getStart() :
         logging.warning(child.getRow().getDesc() + " start date too small")
@@ -482,7 +482,7 @@ class Percolator() :
         logging.debug(child.getRow().getDesc() + " start date coherent")
     else :
       logging.debug(child.getRow().getDesc() + " start not set")
-      child.getRow().setStart(parent.getRow().getStart())
+      #child.getRow().setStart(parent.getRow().getStart())
 
     if child.getRow().getEnd() :
       if child.getRow().getEnd() > parent.getRow().getEnd() :
@@ -494,7 +494,7 @@ class Percolator() :
         logging.debug(child.getRow().getDesc() + " end date coherent")
     else :
       logging.debug(child.getRow().getDesc() + " end not set")
-      child.getRow().setEnd(parent.getRow().getEnd())
+      #child.getRow().setEnd(parent.getRow().getEnd())
 
     if child.getRow().getStatus() :
       if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() >= 100 :
@@ -502,11 +502,14 @@ class Percolator() :
         if self.args.fix :
           logging.warning("Fixing")
           child.getRow().setStatus(parent.getRow().getStatus())
+        else :
+          logging.warning("Parent status cannot be 100% as child is not, forcing it to child' value")
+          parent.getRow().setStatus(child.getRow().getStatus())
       else :
         logging.debug(child.getRow().getDesc() + " status coherent")
     else :
       logging.debug(child.getRow().getDesc() + " status not set")
-      child.getRow().setStatus(parent.getRow().getStatus())
+      #child.getRow().setStatus(parent.getRow().getStatus())
 
   #----------------------------------------------------
   def parentToChildAll(self,parent,child) :
@@ -586,7 +589,7 @@ def fScan(args) :
   build(args.file,tree)
   Percolator(args,tree)
   WbsGenerator(args,tree)
-  GanttGenerator(args,tree)
+  #GanttGenerator(args,tree)
 
 #----------------------------------------------------
 parser = argparse.ArgumentParser()
