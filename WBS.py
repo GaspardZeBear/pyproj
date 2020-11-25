@@ -140,7 +140,7 @@ class Row() :
   #----------------------------------------------------
   def toWbs(self) :
     level=self.getDepth() + self.getDirection()
-    return("{:s} {:s}\\n{:s}\\n{:s}\\n{:s} <<{:s}>>".format(
+    return("{:s} <b>{:s}</b>\\n{:s}\\n{:s}\\n{:s} <<{:s}>>".format(
       level,
       self.getDesc(),
       self.start,
@@ -283,9 +283,11 @@ class TreeBuilder() :
   def addSubtree(self,row,subtree) :
       dummyRow=Row(row)
       logging.warning("addSubtree self.treeBuilder " + str(self))
-      logging.warning("currentNode is at begining " + self.currentNode.getDesc())
-      logging.warning("currentNode parent  " + self.currentNode.getParent().getDesc())
-      upCount=len(dummyRow.getDepth()) - self.currentNode.getLevel() -1
+      if self.currentNode :
+        logging.warning("currentNode is at begining " + self.currentNode.getDesc())
+        if self.currentNode.getParent() :
+          logging.warning("currentNode parent  " + self.currentNode.getParent().getDesc())
+      #upCount=len(dummyRow.getDepth()) - self.currentNode.getLevel() -1
       upCount=self.currentNode.getLevel() - (len(dummyRow.getDepth()) -1)
       logging.warning("addSubtree row depth {:s} node level {:d} upCount {:d} ".format(
        dummyRow.getDepth(),
