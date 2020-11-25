@@ -18,7 +18,13 @@ wbsDiagram {
   .backlogLate {
       BackgroundColor red
   }
-  .runningLate {
+  .runningHalf1 {
+      BackgroundColor GreenYellow
+  }
+  .runningHalf2 {
+      BackgroundColor SpringGreen
+  }
+  .late {
       BackgroundColor red
   }
   .done {
@@ -131,17 +137,9 @@ class Row() :
     self.start=row['start'].strip() if row['start'] else '' 
     self.end=row['end'].strip() if row['end'] else ''
     self.who=row['who'].strip() if row['who'] else ''
-    #self.statusValues={
-    # 'unknown' : 0,
-    # 'backlog' : 1,
-    # 'running' : 2,
-    # 'done'    : 3
-    #}
-    #status=row['status'].strip().lower() if row['status'] else ''
     status=int(row['status'].strip()) if row['status'] else 0
     self.setStatus(status)
-    #self.statusNum=self.statusValues[self.status] if self.status in self.statusValues else 0
-    logging.warning("Created new Row <" + self.toString() +">")
+    logging.debug("Created new Row <" + self.toString() +">")
    
   #----------------------------------------------------
   def getDepth(self) :
@@ -159,8 +157,8 @@ class Row() :
   def getStatus(self) :
     return(self.status)
   #----------------------------------------------------
-  def getStatusNum(self) :
-    return(self.statusNum)
+  #def getStatusNum(self) :
+  #  return(self.statusNum)
   #----------------------------------------------------
   def getStatusStr(self) :
     return(self.statusStr)
@@ -188,19 +186,19 @@ class Row() :
   def setStatus(self,status) :
     self.status=status
     if self.status < 0 :
-      self.statusStr="None"
+      self.statusStr="Neutral"
     elif self.status < 1 :
       self.statusStr="Backlog"
+    elif self.status < 50 :
+      self.statusStr="RunningHalf1"
     elif self.status < 100 :
-      self.statusStr="Running"
+      self.statusStr="RunningHalf2"
     else :
       self.statusStr="Done"
-    self.statusNum=status
-    #self.statusNum=self.statusValues[self.status] if self.status in self.statusValues else 0
 
   #----------------------------------------------------
   def toString(self) :
-    return("{:s} {:20s} {:1s} {:12s} {:10s} {:10s} {:20s} {:3d} {:3d} ".format(
+    return("{:s} {:20s} {:1s} {:12s} {:10s} {:10s} {:20s} {:3d} {:s} ".format(
       self.getDepth(),
       self.getDesc(),
       self.getDirection(),
@@ -209,7 +207,7 @@ class Row() :
       self.getEnd(),
       self.getWho(),
       self.getStatus(),
-      self.getStatusNum(),
+      self.getStatusStr(),
     ))
   #----------------------------------------------------
   def toWbs(self) :
@@ -293,7 +291,7 @@ class Node() :
 
   #----------------------------------------------------
   def toStringAll(self) :
-    return("{:d}\n{:s}\n{:s}\n{:s}".format(
+    return("{:d}\nrow : {:s}\n up : {:s}\n down :{:s}".format(
       self.getLevel(),
       self.getRow().toString(),
       self.getUpRow().toString(),
@@ -332,11 +330,11 @@ class Tree() :
   #----------------------------------------------------
   def adjustLevel(self,node) :
     level=node.getParent().getLevel()
-    logging.warning("adjust level  " + node.getDesc() )
-    logging.warning("adjust level  parent " + node.getParent().getDesc())
+    logging.debug("adjust level  " + node.getDesc() )
+    logging.debug("adjust level  parent " + node.getParent().getDesc())
     node.setLevel(level + 1)
     node.getRow().setDepth("*" * (node.getLevel() +1) )
-    logging.warning("adjust level done  " + node.getDesc() )
+    logging.debug("adjust level done  " + node.getDesc() )
     for c in node.getChildren() :
       self.adjustLevel(c)
 
@@ -357,14 +355,14 @@ class TreeBuilder() :
 
   #----------------------------------------------------
   def addNodeToTree(self,row) :
-    logging.warning("addNodeToTree self.treeBuilder " + str(self))
+    logging.debug("addNodeToTree self.treeBuilder " + str(self))
     if self.currentNode :
       # Tree exists
-      logging.warning("currentNode is at begining " + self.currentNode.getDesc())
+      logging.debug("currentNode is at begining " + self.currentNode.getDesc())
       if self.currentNode.getParent() :
-        logging.warning("currentNode parent  " + self.currentNode.getParent().getDesc())
+        logging.debug("currentNode parent  " + self.currentNode.getParent().getDesc())
       upCount=self.currentNode.getLevel() - (len(row.getDepth()) -1 )
-      logging.warning("addNodeToTree row depth {:s} node level {:d} upCount {:d} ".format(
+      logging.debug("addNodeToTree row depth {:s} node level {:d} upCount {:d} ".format(
        row.getDepth(),
        self.currentNode.getLevel(),
        upCount
@@ -375,12 +373,12 @@ class TreeBuilder() :
       #for i in range(1,upCount) :
         self.currentNode=self.currentNode.getParent()
         i += 1
-        logging.warning("currentNode went up is now " + self.currentNode.getDesc())
-      logging.warning("currentNode is finally " + self.currentNode.getDesc())
+        logging.debug("currentNode went up is now " + self.currentNode.getDesc())
+      logging.debug("currentNode is finally " + self.currentNode.getDesc())
       node=Node(self.currentNode,len(row.getDepth())-1,row)
       self.currentNode.addChild(node)
       self.currentNode=node
-      logging.warning("currentNode is " + self.currentNode.getDesc())
+      logging.debug("currentNode is " + self.currentNode.getDesc())
     else :
       # Create the root !
       self.currentNode=Node(None,self.tree.getRootLevel(),row)
@@ -393,12 +391,12 @@ class TreeBuilder() :
       dummyRow=Row(row)
       logging.warning("addSubtree self.treeBuilder " + str(self))
       if self.currentNode :
-        logging.warning("currentNode is at begining " + self.currentNode.getDesc())
+        logging.debug("currentNode is at begining " + self.currentNode.getDesc())
         if self.currentNode.getParent() :
-          logging.warning("currentNode parent  " + self.currentNode.getParent().getDesc())
+          logging.debug("currentNode parent  " + self.currentNode.getParent().getDesc())
       #upCount=len(dummyRow.getDepth()) - self.currentNode.getLevel() -1
       upCount=self.currentNode.getLevel() - (len(dummyRow.getDepth()) -1)
-      logging.warning("addSubtree row depth {:s} node level {:d} upCount {:d} ".format(
+      logging.debug("addSubtree row depth {:s} node level {:d} upCount {:d} ".format(
        dummyRow.getDepth(),
        self.currentNode.getLevel(),
        upCount
@@ -408,8 +406,8 @@ class TreeBuilder() :
       #for i in range(1,upCount) :
         self.currentNode=self.currentNode.getParent()
         i += 1
-        logging.warning("currentNode went up is now  " + self.currentNode.getDesc())
-      logging.warning("currentNode is finally " + self.currentNode.getDesc())
+        logging.debug("currentNode went up is now  " + self.currentNode.getDesc())
+      logging.debug("currentNode is finally " + self.currentNode.getDesc())
       self.currentNode.addChild(subtree.getRoot())
       subtree.getRoot().setParent(self.currentNode)
       subtree.adjustLevel(subtree.getRoot())
@@ -423,11 +421,11 @@ class Percolator() :
   def __init__(self,args,tree) :
     self.args=args
     self.tree=tree
-    print("Initial")
+    #print("Initial")
     self.display(tree.getRoot())
     self.percolate(tree.getRoot())
-    print("Final")
-    self.display(tree.getRoot())
+    #print("Final")
+    #self.display(tree.getRoot())
     self.displayAll(tree.getRoot())
 
   #----------------------------------------------------
@@ -515,13 +513,13 @@ class Percolator() :
     parent.setUpRow()
     child.setUpRow()
     if not child.getUpRow().getStart() :
-      logging.debug(child.getUpRow().getDesc() + " start not set")
+      logging.warning(child.getUpRow().getDesc() + " start not set")
       child.getUpRow().setStart(parent.getUpRow().getStart())
     if not child.getUpRow().getEnd() :
-      logging.debug(child.getUpRow().getDesc() + " end not set")
+      logging.warning(child.getUpRow().getDesc() + " end not set")
       child.getUpRow().setEnd(parent.getUpRow().getEnd())
     if not child.getUpRow().getStatus() :
-      logging.debug(child.getUpRow().getDesc() + " status not set")
+      logging.warning(child.getUpRow().getDesc() + " status not set")
       child.getUpRow().setStatus(parent.getUpRow().getStatus())
 
   #----------------------------------------------------
@@ -529,13 +527,13 @@ class Percolator() :
     parent.setDownRow()
     child.setDownRow()
     if not parent.getDownRow().getStart() :
-      logging.debug(parent.getDownRow().getDesc() + " start not set")
+      logging.warning(parent.getDownRow().getDesc() + " start not set")
       parent.getDownRow().setStart(child.getDownRow().getStart())
     if not parent.getDownRow().getEnd() :
-      logging.debug(parent.getDownRow().getDesc() + " end not set")
+      logging.warning(parent.getDownRow().getDesc() + " end not set")
       parent.getDownRow().setEnd(child.getUpRow().getEnd())
     if not parent.getDownRow().getStatus() :
-      logging.debug(parent.getDownRow().getDesc() + " status not set")
+      logging.warning(parent.getDownRow().getDesc() + " status not set")
       parent.getDownRow().setStatus(child.getDownRow().getStatus())
 
 
