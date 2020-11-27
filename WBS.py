@@ -212,12 +212,13 @@ class Row() :
   #----------------------------------------------------
   def toWbs(self) :
     level=self.getDepth() + self.getDirection()
-    return("{:s} <b>{:s}</b>\\n{:s}\\n{:s}\\n{:3d}%<<{:s}>>".format(
+    status="{:3d}".format(self.status) if self.status >= 0 else ''
+    return("{:s} <b>{:s}</b>\\n{:s}\\n{:s}\\n{:s}%<<{:s}>>".format(
       level,
       self.getDesc(),
       self.start,
       self.end,
-      self.status,
+      status,
       self.statusStr,
       ))
 
@@ -240,9 +241,12 @@ class Node() :
     self.children=[]
     self.row=row
     self.upRow=None
-    self.downRow=None
+    self.setUpRow()
+    #logging.warning("setUpRow : upRow :  " + str(self.upRow))
+    self.setDownRow()
     self.level=level
-    logging.warning("Creating New node : row={:s} level={:d} ".format(self.row.toString(),self.level))
+    #logging.warning("Creating New node : {:s}".format(self.toString()))
+    #logging.warning("New node : row={:s} level={:d} ".format(self.row.toString(),self.level))
     if self.parent :
       logging.warning("Parent node : " + self.parent.getDesc())
     else :
@@ -271,7 +275,9 @@ class Node() :
     self.upRow=copy.deepcopy(self.row)
   #----------------------------------------------------
   def setDownRow(self) :
+    #logging.warning("setDownRow for row " + self.row.toString())
     self.downRow=copy.deepcopy(self.row)
+    #logging.warning("setDownRow : downRow :  " + self.downRow.toString())
   #----------------------------------------------------
   def getDownRow(self) :
     return(self.downRow)
@@ -284,9 +290,12 @@ class Node() :
 
   #----------------------------------------------------
   def toString(self) :
-    return("{:d} {:s}".format(
+    return("{:d} {:s} upRow {:s} row {:s} downRow {:s}".format(
       self.getLevel(),
       self.getRow().toString(),
+      self.getUpRow(),
+      self.getRow(),
+      self.getDownRow(),
     ))
 
   #----------------------------------------------------
@@ -421,100 +430,19 @@ class Percolator() :
   def __init__(self,args,tree) :
     self.args=args
     self.tree=tree
-    #print("Initial")
     self.display(tree.getRoot())
     self.percolate(tree.getRoot())
-    #print("Final")
     self.display(tree.getRoot())
     self.displayAll(tree.getRoot())
-
-  #----------------------------------------------------
-  # status was character string
-  def XparentToChild(self,parent,child) :
-    child.setUpRow()
-    if child.getRow().getStart() :
-      if child.getRow().getStart() < parent.getRow().getStart() :
-        logging.warning(child.getRow().getDesc() + " start date too small")
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setStart(parent.getRow().getStart())
-      else :
-        logging.debug(child.getRow().getDesc() + " start date coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " start not set")
-      child.getRow().setStart(parent.getRow().getStart())
-
-    if child.getRow().getEnd() :
-      if child.getRow().getEnd() > parent.getRow().getEnd() :
-        logging.warning(child.getRow().getDesc() + " end date too high")
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setEnd(parent.getRow().getEnd())
-      else :
-        logging.debug(child.getRow().getDesc() + " end date coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " end not set")
-      child.getRow().setEnd(parent.getRow().getEnd())
-
-    if child.getRow().getStatus() :
-      if child.getRow().getStatusNum() > 0 and child.getRow().getStatusNum() < parent.getRow().getStatusNum() :
-        logging.warning(child.getRow().getDesc() + " status " + child.getRow().getStatus() + " too high " + parent.getRow().getStatus())
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setStatus(parent.getRow().getStatus())
-      else :
-        logging.debug(child.getRow().getDesc() + " status coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " status not set")
-      child.getRow().setStatus(parent.getRow().getStatus())
-
-
-  #----------------------------------------------------
-  def parentToChild(self,parent,child) :
-    #child.setUpRow()
-    if child.getRow().getStart() :
-      if child.getRow().getStart() < parent.getRow().getStart() :
-        logging.warning(child.getRow().getDesc() + " start date too small")
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setStart(parent.getRow().getStart())
-      else :
-        logging.debug(child.getRow().getDesc() + " start date coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " start not set")
-      #child.getRow().setStart(parent.getRow().getStart())
-
-    if child.getRow().getEnd() :
-      if child.getRow().getEnd() > parent.getRow().getEnd() :
-        logging.warning(child.getRow().getDesc() + " end date too high")
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setEnd(parent.getRow().getEnd())
-      else :
-        logging.debug(child.getRow().getDesc() + " end date coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " end not set")
-      #child.getRow().setEnd(parent.getRow().getEnd())
-
-    if child.getRow().getStatus() :
-      if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() >= 100 :
-        logging.warning(child.getRow().getDesc() + " status " + str(child.getRow().getStatus()) + " too high " + str(parent.getRow().getStatus()))
-        if self.args.fix :
-          logging.warning("Fixing")
-          child.getRow().setStatus(parent.getRow().getStatus())
-        else :
-          logging.warning("Parent status cannot be 100% as child is not, forcing it to child' value")
-          parent.getRow().setStatus(child.getRow().getStatus())
-      else :
-        logging.debug(child.getRow().getDesc() + " status coherent")
-    else :
-      logging.debug(child.getRow().getDesc() + " status not set")
-      #child.getRow().setStatus(parent.getRow().getStatus())
+    if args.fix :
+      self.fix(tree.getRoot())
 
   #----------------------------------------------------
   def parentToChildAll(self,parent,child) :
-    parent.setUpRow()
-    child.setUpRow()
+    #logging.warning("parentToChildAll() parent " + parent.toString())
+    #logging.warning("parentToChildAll() child " + child.toString())
+    #logging.warning("parentToChildAll() child  : upRow :  " + child.upRow.toString())
+
     if not child.getUpRow().getStart() :
       logging.warning(child.getUpRow().getDesc() + " start not set")
       child.getUpRow().setStart(parent.getUpRow().getStart())
@@ -524,11 +452,14 @@ class Percolator() :
     if not child.getUpRow().getStatus() :
       logging.warning(child.getUpRow().getDesc() + " status not set")
       child.getUpRow().setStatus(parent.getUpRow().getStatus())
+    else : 
+      if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() >= 100 :
+        logging.warning("Parent status cannot be 100% as child is not, forcing it to child' value")
+        parent.getRow().setStatus(child.getRow().getStatus())
+
 
   #----------------------------------------------------
   def childToParentAll(self,parent,child) :
-    parent.setDownRow()
-    child.setDownRow()
     if not parent.getDownRow().getStart() :
       logging.warning(parent.getDownRow().getDesc() + " start not set")
       parent.getDownRow().setStart(child.getDownRow().getStart())
@@ -538,6 +469,10 @@ class Percolator() :
     if not parent.getDownRow().getStatus() :
       logging.warning(parent.getDownRow().getDesc() + " status not set")
       parent.getDownRow().setStatus(child.getDownRow().getStatus())
+    else :
+      if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() == 0 :
+        logging.warning("Parent status cannot be 0% as child is not, forcing it to child' value")
+        parent.getRow().setStatus(child.getRow().getStatus())
 
 
   #----------------------------------------------------
@@ -545,7 +480,6 @@ class Percolator() :
     print(node.toString())
     for c in node.getChildren() :
       self.display(c)
-
 
   #----------------------------------------------------
   def displayAll(self,node) :
@@ -556,13 +490,55 @@ class Percolator() :
 
   #----------------------------------------------------
   def percolate(self,node) :
-    logging.debug("before " + node.toString())
+    #logging.warning("percolate() before " + node.toString())
     for c in node.getChildren() :
+      #logging.warning("percolate() " + c.toString())
       self.parentToChildAll(node,c)
-      self.parentToChild(node,c)
+      #self.parentToChild(node,c)
       self.percolate(c)
       self.childToParentAll(node,c)
-    logging.debug("after  " + node.toString())
+    #logging.debug("percolate() after  " + node.toString())
+
+  #----------------------------------------------------
+  def XsetFinalRow(self,node) :
+    starts=[]
+    if len(node.getRow().getStart()) > 0 : 
+      starts.append(node.getRow().getStart())
+    if len(node.getUpRow().getStart()) > 0 : 
+      starts.append(node.getUpRow().getStart())
+    if len(node.getDownRow().getStart()) > 0 : 
+      starts.append(node.getDownRow().getStart())
+    if len(starts) > 0 :
+      node.getRow().setStart(sorted(starts)[0])
+    logging.warning("setFinalRow()  start : {:s} {:s}".format(node.getRow().getDesc(),node.getRow().getStart()))
+    ends=[]
+    if len(node.getRow().getEnd()) > 0 :
+      ends.append(node.getRow().getEnd())
+    if len(node.getUpRow().getEnd()) > 0 :
+      ends.append(node.getUpRow().getEnd())
+    if len(node.getDownRow().getEnd()) > 0 :
+      ends.append(node.getDownRow().getEnd())
+    if len(ends) > 0 :
+      node.getRow().setEnd(sorted(ends,reverse=True)[0])
+    logging.warning("setFinalRow()  end : {:s} {:s}".format(node.getRow().getDesc(),node.getRow().getEnd()))
+
+  #----------------------------------------------------
+  def setFinalStart(self,node) :
+    pass
+  #----------------------------------------------------
+  def setFinalEnd(self,node) :
+    pass
+
+  #----------------------------------------------------
+  def setFinalRow(self,node) :
+    self.setFinalStart(node)
+    self.setFinalEnd(node)
+
+  #----------------------------------------------------
+  def fix(self,node) :
+    for c in node.getChildren() :
+      self.fix(c)
+    self.setFinalRow(node)
 
 #----------------------------------------------------
 def build(csvFile,tree) :
@@ -588,8 +564,10 @@ def fScan(args) :
   tree=Tree()
   build(args.file,tree)
   Percolator(args,tree)
-  WbsGenerator(args,tree)
-  #GanttGenerator(args,tree)
+  if args.wbs :
+    WbsGenerator(args,tree)
+  if args.gantt :
+   GanttGenerator(args,tree)
 
 #----------------------------------------------------
 parser = argparse.ArgumentParser()
@@ -606,6 +584,7 @@ parserScan.set_defaults(func=fScan)
 parserScan.add_argument('--file','-f',help="file",default="WBS.svt")
 parserScan.add_argument('--fix',help="Fix errors",action="store_true",default=False)
 parserScan.add_argument('--wbs',help="Generate WBS",action="store_true",default=False)
+parserScan.add_argument('--gantt',help="Generate Gantt",action="store_true",default=False)
 
 args=parser.parse_args()
 loglevel=[logging.WARNING,logging.INFO,logging.DEBUG,1]
