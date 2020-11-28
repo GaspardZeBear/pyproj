@@ -2,124 +2,7 @@ import csv
 import copy
 import logging
 import argparse
-
-#============================================
-class WbsGenerator() :
-  head='''
-@startwbs
-<style>
-wbsDiagram {
-  .group {
-      RoundCorner 40
-  }
-  .backlog {
-      BackgroundColor silver
-  }
-  .backlogLate {
-      BackgroundColor red
-  }
-  .runningHalf1 {
-      BackgroundColor GreenYellow
-  }
-  .runningHalf2 {
-      BackgroundColor SpringGreen
-  }
-  .late {
-      BackgroundColor red
-  }
-  .done {
-      BackgroundColor green
-  }
-  .critical {
-    BackgroundColor orange
-    LineColor red
-    LineThickness 5.0
-  }
-  .neutral {
-      BackgroundColor white
-  }
-}
-</style>
-'''
-  tail="@endwbs"
-
-  #----------------------------------------------------
-  def __init__(self,args,tree) :
-    self.tree=tree
-    self.lines=[]
-    self.treeToWbs()
-
-  #----------------------------------------------------
-  def treeToWbs(self) :
-    self.lines.append(WbsGenerator.head)
-    self.nodeAsWbs(self.tree.getRoot())
-    self.lines.append(WbsGenerator.tail)
-    for l in self.lines :
-      print(l)
-
-  #----------------------------------------------------
-  def nodeAsWbs(self,node) :
-    self.lines.append(node.getRow().toWbs())
-    for c in node.getChildren() :
-      self.nodeAsWbs(c)
-
-#============================================
-class GanttGenerator() :
-  head='''
-@startuml
-<style>
-wbsDiagram {
-  .group {
-      RoundCorner 40
-  }
-  .backlog {
-      BackgroundColor silver
-  }
-  .backlogLate {
-      BackgroundColor red
-  }
-  .runningLate {
-      BackgroundColor red
-  }
-  .done {
-      BackgroundColor green
-  }
-  .critical {
-    BackgroundColor orange
-    LineColor red
-    LineThickness 5.0
-  }
-  .neutral {
-      BackgroundColor white
-  }
-}
-</style>
-saturday are closed
-sunday are closed
-'''
-  tail="@enduml"
-
-  #----------------------------------------------------
-  def __init__(self,args,tree) :
-    self.tree=tree
-    self.lines=[]
-    self.treeToGantt()
-
-  #----------------------------------------------------
-  def treeToGantt(self) :
-    self.lines.append(GanttGenerator.head)
-    self.lines.append("project starts " + self.tree.getRoot().getRow().getStart())
-    self.nodeAsGantt(self.tree.getRoot())
-    self.lines.append(GanttGenerator.tail)
-    for l in self.lines :
-      print(l)
-
-  #----------------------------------------------------
-  def nodeAsGantt(self,node) :
-    self.lines.append(node.getRow().toGantt())
-    for c in node.getChildren() :
-      self.nodeAsGantt(c)
-
+from Generators import *
 
 #============================================
 class Row() :
@@ -428,12 +311,15 @@ class Percolator() :
     self.args=args
     self.tree=tree
     self.display(tree.getRoot())
+    logging.warning("----------------------------------- Percolation begins-----------------------------------------")
     self.percolate(tree.getRoot())
+    logging.warning("----------------------------------- Percolation Over  -----------------------------------------")
     self.display(tree.getRoot())
     self.displayAll(tree.getRoot())
     if args.fix :
-      logging.warning("----------------------------------- FIX -----------------------------------------------------")
+      logging.warning("----------------------------------- FIX  begins ---------------------------------------------")
       self.fix(tree.getRoot())
+      logging.warning("----------------------------------- FIX  over   ---------------------------------------------")
 
   #----------------------------------------------------
   def parentToChildAll(self,parent,child) :
@@ -501,14 +387,14 @@ class Percolator() :
 
   #----------------------------------------------------
   def percolate(self,node) :
-    #logging.warning("percolate() before " + node.toString())
+    logging.warning("percolate() node at entry " + node.toString())
     for c in node.getChildren() :
       #logging.warning("percolate() " + c.toString())
       self.parentToChildAll(node,c)
       #self.parentToChild(node,c)
       self.percolate(c)
       self.childToParentAll(node,c)
-    #logging.debug("percolate() after  " + node.toString())
+    logging.warning("percolate() node at end " + node.toString())
 
   #----------------------------------------------------
   def setFinalStart(self,node) :
