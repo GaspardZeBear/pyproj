@@ -290,21 +290,18 @@ class Node() :
 
   #----------------------------------------------------
   def toString(self) :
-    return("{:d} {:s} upRow {:s} row {:s} downRow {:s}".format(
+    return("{:d} row {:s}".format(
       self.getLevel(),
       self.getRow().toString(),
-      self.getUpRow(),
-      self.getRow(),
-      self.getDownRow(),
     ))
 
   #----------------------------------------------------
   def toStringAll(self) :
-    return("{:d}\nrow : {:s}\n up : {:s}\n down :{:s}".format(
+    return("Level {:d}\ndown : {:s}\nrow  : {:s}\nup   :{:s}".format(
       self.getLevel(),
+      self.getDownRow().toString(),
       self.getRow().toString(),
       self.getUpRow().toString(),
-      self.getDownRow().toString(),
     ))
 
 
@@ -435,13 +432,13 @@ class Percolator() :
     self.display(tree.getRoot())
     self.displayAll(tree.getRoot())
     if args.fix :
+      logging.warning("----------------------------------- FIX -----------------------------------------------------")
       self.fix(tree.getRoot())
 
   #----------------------------------------------------
   def parentToChildAll(self,parent,child) :
-    #logging.warning("parentToChildAll() parent " + parent.toString())
-    #logging.warning("parentToChildAll() child " + child.toString())
-    #logging.warning("parentToChildAll() child  : upRow :  " + child.upRow.toString())
+    logging.warning("parentToChildAll() in parent " + parent.toStringAll())
+    logging.warning("parentToChildAll() in  child " + child.toStringAll())
 
     if not child.getUpRow().getStart() :
       logging.warning(child.getUpRow().getDesc() + " start not set")
@@ -456,16 +453,28 @@ class Percolator() :
       if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() >= 100 :
         logging.warning("Parent status cannot be 100% as child is not, forcing it to child' value")
         parent.getRow().setStatus(child.getRow().getStatus())
+    logging.warning("parentToChildAll() child out " + child.toStringAll())
 
 
   #----------------------------------------------------
   def childToParentAll(self,parent,child) :
+    logging.warning("childToParentAll() in parent " + parent.toStringAll())
+    logging.warning("childToParentAll() in  child " + child.toStringAll())
+
     if not parent.getDownRow().getStart() :
       logging.warning(parent.getDownRow().getDesc() + " start not set")
       parent.getDownRow().setStart(child.getDownRow().getStart())
+    else : 
+      if child.getDownRow().getStart() < parent.getDownRow().getEnd() :
+        parent.getDownRow().setStart(child.getDownRow().getStart())
+
     if not parent.getDownRow().getEnd() :
       logging.warning(parent.getDownRow().getDesc() + " end not set")
       parent.getDownRow().setEnd(child.getUpRow().getEnd())
+    else : 
+      if child.getDownRow().getEnd() > parent.getDownRow().getEnd() :
+        parent.getDownRow().setEnd(child.getDownRow().getEnd())
+
     if not parent.getDownRow().getStatus() :
       logging.warning(parent.getDownRow().getDesc() + " status not set")
       parent.getDownRow().setStatus(child.getDownRow().getStatus())
@@ -473,6 +482,8 @@ class Percolator() :
       if ((child.getRow().getStatus() >= 0) and (child.getRow().getStatus() < 100))  and   parent.getRow().getStatus() == 0 :
         logging.warning("Parent status cannot be 0% as child is not, forcing it to child' value")
         parent.getRow().setStatus(child.getRow().getStatus())
+
+    logging.warning("childToParentAll() parent out " + parent.toStringAll())
 
 
   #----------------------------------------------------
@@ -500,34 +511,58 @@ class Percolator() :
     #logging.debug("percolate() after  " + node.toString())
 
   #----------------------------------------------------
-  def XsetFinalRow(self,node) :
-    starts=[]
-    if len(node.getRow().getStart()) > 0 : 
-      starts.append(node.getRow().getStart())
-    if len(node.getUpRow().getStart()) > 0 : 
-      starts.append(node.getUpRow().getStart())
-    if len(node.getDownRow().getStart()) > 0 : 
-      starts.append(node.getDownRow().getStart())
-    if len(starts) > 0 :
-      node.getRow().setStart(sorted(starts)[0])
-    logging.warning("setFinalRow()  start : {:s} {:s}".format(node.getRow().getDesc(),node.getRow().getStart()))
-    ends=[]
-    if len(node.getRow().getEnd()) > 0 :
-      ends.append(node.getRow().getEnd())
-    if len(node.getUpRow().getEnd()) > 0 :
-      ends.append(node.getUpRow().getEnd())
-    if len(node.getDownRow().getEnd()) > 0 :
-      ends.append(node.getDownRow().getEnd())
-    if len(ends) > 0 :
-      node.getRow().setEnd(sorted(ends,reverse=True)[0])
-    logging.warning("setFinalRow()  end : {:s} {:s}".format(node.getRow().getDesc(),node.getRow().getEnd()))
-
-  #----------------------------------------------------
   def setFinalStart(self,node) :
-    pass
+    dru=0
+    dru += 0 if len(node.getDownRow().getStart()) == 0 else 4 
+    dru += 0 if len(node.getRow().getStart()) == 0 else 2 
+    dru += 0 if len(node.getUpRow().getStart()) == 0 else 1
+    logging.warning(" node {:s}  dru {:d}".format(node.toStringAll(),dru))
+    if dru==0 :
+      pass
+    elif dru==1 :
+      node.getRow().setStart(node.getUpRow().getStart())
+    elif dru==2 :
+      pass
+    elif dru==3 :
+      pass
+    elif dru==4 :
+      node.getRow().setStart(node.getDownRow().getStart())
+    elif dru==5 :
+      node.getRow().setStart(node.getDownRow().getStart())
+    elif dru==6 :
+      if node.getDownRow().getStart() < node.getRow().getStart() :
+        node.getRow().setStart(node.getDownRow().getStart())
+    elif dru==7 :
+      if node.getDownRow().getStart() < node.getRow().getStart() :
+        node.getRow().setStart(node.getDownRow().getStart())
+    logging.warning(" node {:s}  dru {:d}".format(node.toStringAll(),dru))
+ 
   #----------------------------------------------------
   def setFinalEnd(self,node) :
-    pass
+    dru=0
+    dru += 0 if len(node.getDownRow().getEnd()) == 0 else 4
+    dru += 0 if len(node.getRow().getEnd()) == 0 else 2
+    dru += 0 if len(node.getUpRow().getEnd()) == 0 else 1
+    logging.warning(" node {:s}  dru {:d}".format(node.toStringAll(),dru))
+    if dru==0 :
+      pass
+    elif dru==1 :
+      node.getRow().setEnd(node.getUpRow().getEnd())
+    elif dru==2 :
+      pass
+    elif dru==3 :
+      pass
+    elif dru==4 :
+      node.getRow().setEnd(node.getDownRow().getEnd())
+    elif dru==5 :
+      node.getRow().setEnd(node.getDownRow().getEnd())
+    elif dru==6 :
+      if node.getDownRow().getEnd() > node.getRow().getEnd() :
+        node.getRow().setEnd(node.getDownRow().getEnd())
+    elif dru==7 :
+      if node.getDownRow().getEnd() > node.getRow().getEnd() :
+        node.getRow().setEnd(node.getDownRow().getEnd())
+    logging.warning(" node {:s}  dru {:d}".format(node.toStringAll(),dru))
 
   #----------------------------------------------------
   def setFinalRow(self,node) :
@@ -536,9 +571,11 @@ class Percolator() :
 
   #----------------------------------------------------
   def fix(self,node) :
+    logging.warning(" Entering fix for node {:s}".format(node.toStringAll()))
     for c in node.getChildren() :
       self.fix(c)
     self.setFinalRow(node)
+    logging.warning(" Leaving  fix for node {:s}".format(node.toStringAll()))
 
 #----------------------------------------------------
 def build(csvFile,tree) :
